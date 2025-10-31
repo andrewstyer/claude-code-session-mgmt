@@ -1,0 +1,72 @@
+#!/usr/bin/env sh
+# Generic pre-commit hook for Claude Code projects
+# Reminds developer to update SESSION-STATUS.md
+
+echo ""
+echo "🔍 Claude Code Pre-Commit Check"
+echo ""
+
+# Check if SESSION-STATUS.md is staged
+if git diff --cached --name-only | grep -q "SESSION-STATUS.md"; then
+  echo "✅ SESSION-STATUS.md is being committed (good!)"
+  echo ""
+else
+  # Check if this is just a docs commit (might not need SESSION-STATUS update)
+  if git diff --cached --name-only | grep -qE "^docs/|\\.md$" && ! git diff --cached --name-only | grep -qE "{{SOURCE_FILE_PATTERN}}"; then
+    echo "ℹ️  Documentation-only commit detected"
+    echo "   SESSION-STATUS.md update might not be needed"
+    echo ""
+  else
+    echo "⚠️  WARNING: SESSION-STATUS.md is NOT being committed!"
+    echo ""
+    echo "   Did you update SESSION-STATUS.md with:"
+    echo "   - Latest completed tasks?"
+    echo "   - Next immediate steps?"
+    echo "   - Current test status?"
+    echo ""
+    echo "   If yes, stage it:"
+    echo "   git add SESSION-STATUS.md"
+    echo ""
+    echo "   If no, cancel this commit (Ctrl+C) and update it first!"
+    echo ""
+    read -p "   Continue anyway? (y/N) " -n 1 -r
+    echo ""
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      echo "❌ Commit cancelled. Please update SESSION-STATUS.md"
+      exit 1
+    fi
+  fi
+fi
+
+# Run type/lint checks
+echo "🔍 Running type/lint checks..."
+if {{TYPE_CHECK_COMMAND}} 2>&1 | grep -q "error"; then
+  echo "❌ Type/lint errors found! Fix them before committing."
+  echo ""
+  {{TYPE_CHECK_COMMAND}}
+  exit 1
+else
+  echo "✅ No type/lint errors"
+  echo ""
+fi
+
+# Check if tests should be run (skip for docs-only commits)
+if git diff --cached --name-only | grep -qE "{{SOURCE_FILE_PATTERN}}"; then
+  echo "🧪 Code changes detected - running tests..."
+  if {{TEST_COMMAND}} 2>&1 | grep -q "FAIL\|error"; then
+    echo "❌ Tests failed! Fix them before committing."
+    echo ""
+    echo "Run: {{TEST_COMMAND}}"
+    exit 1
+  else
+    echo "✅ Tests passed"
+    echo ""
+  fi
+else
+  echo "ℹ️  No code changes - skipping test run"
+  echo ""
+fi
+
+echo "✅ Pre-commit checks passed!"
+echo ""
+exit 0
