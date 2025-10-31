@@ -1,4 +1,4 @@
-# Claude Code Development Toolkit
+# Claude Code Session Management Toolkit
 
 **Reusable session management and workflow system for Claude Code projects**
 
